@@ -1,0 +1,131 @@
+---
+title: "Glovo Data Science Interview"
+author: "Sergi Vilardell"
+date: "7 June 2018"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=6, fig.height=4,echo = TRUE)
+library(tidyverse)
+library(data.table)
+library(corrplot)
+library(viridis)
+library(GGally)
+```
+
+## Task 1: Exploratory Analysis
+
+Let us describe the data given a little bit:
+
+
+
+```{r}
+#Read data
+lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
+weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
+
+summary(weekly.df)
+summary(lifetime.df)
+```
+
+
+
+Let us begin with the lifetime data.
+```{r}
+glimpse(lifetime.df)
+```
+
+
+Here we have a column for the id of each `courier`, a categorical feature in `feature_1` with values `a,b,c,d`, and a numerical feature in `feature_2`. Note that in `feature_2` there are `NA`, therefore we should compute how many instances there are with missing values:
+
+```{r}
+#Add column to account for the NAs
+# T == NA, F != NA
+lifetime.df <- lifetime.df %>% 
+	mutate( is_na = ifelse(is.na(feature_2), T, F))
+
+#Check how many NAs we have
+lifetime.df %>%  
+	count(is_na)
+```
+
+So about $12\%$ of the instances in `feature_2` are `NA` so they should not be ignored. It is interesting to see the number of instances fo each group in `feature_1` and also the distribution of `NA` in said groups.
+
+```{r}
+ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
+	geom_bar(colour = "black")+
+	theme_minimal()
+```
+
+Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless the proportion of `NA` values for each group seems to be similar.
+
+```{r}
+lifetime.df %>% 
+	group_by(feature_1) %>% 
+	summarise(sum(is_na)/n())
+```
+
+Except in `c` all other groups have similar `NA` proportion, which maybe due to the low number of instances in `c`. 
+
+
+
+Quick plot to viasualize `feature_2`:
+
+```{r}
+plot(lifetime.df$feature_2)
+```
+
+All values lie within the same range except some outliers: the three instances with value above 900.
+
+```{r}
+lifetime.df %>% 
+	drop_na() %>% 
+	filter(feature_2 > 200)
+```
+ And the negative numbers:
+ 
+```{r}
+lifetime.df %>% 
+	drop_na() %>% 
+	filter(feature_2 < 0)
+```
+ 
+ They are outliers not because their value differ from the mean, but because they are the only negative numbers and so they should be treated with caution depending on what `feature_2` means. Without knowing what this data is representing we can only stand out its deviation from the regular behaviour. Furthermore both outliers belong to either group `a` or `b`. 
+ 
+Let us see the distribution of `feature_2` without the outliers:
+```{r}
+filtered.data <- lifetime.df %>% 
+	drop_na() %>% 
+	filter(feature_2 %in% -1:75)
+	
+ggplot(data = filtered.data, aes(x = feature_2))+
+	geom_histogram(binwidth = 1)
+```
+Also separated by group:
+```{r}
+ggplot(data = filtered.data, aes(x = feature_2))+
+	geom_histogram(binwidth = 1)+
+	facet_wrap(~feature_1)+
+	theme_minimal()
+```
+
+
+
+## Task 2: Predictive Algorithm
+
+Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+
+
+## Task 3: Evaluating the Model
+
+Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+
