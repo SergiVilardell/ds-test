@@ -1,0 +1,33 @@
+---
+title: "Correlation Plots"
+author: "Sergi Vilardell"
+date: "7 June 2018"
+output: html_document
+runtime: shiny
+---
+
+
+```{r, fig.width= 10, fig.width= 6}
+library(GGally)
+library(plotly)
+library(data.table)
+
+source("sandbox.R")
+
+weekly.df <<- weekly.df
+inputPanel(
+  selectInput("features", label = "Number of features:",
+              choices = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ,15 ,16 ,17 ,18), selected = c(3,5,6,7), multiple = T)
+
+)
+  
+output$plot <- renderPlot({
+
+ggpairs(weekly.df, columns = as.numeric(input$features),  aes(colour = weekly.df$feature_18, alpha = 0.5))
+
+}
+)
+mainPanel(plotOutput("plot"))
+
+
+```
