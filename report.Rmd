@@ -111,6 +111,8 @@ filtered.data <- lifetime.df %>%
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)
 ```
+
+
 Also separated by group:
 ```{r}
 ggplot(data = filtered.data, aes(x = feature_2))+
@@ -120,7 +122,7 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 ```
 
 
-```{r, fig.width= 10, fig.width= 10}
+```{r, fig.width= 10, fig.width= 10, echo = T}
 library(GGally)
 library(plotly)
 library(rsconnect)
@@ -134,13 +136,32 @@ weekly.df$feature_18 <- b
 weekly.df <<- weekly.df
 inputPanel(
   selectInput("features", label = "Number of features:",
-              choices = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ,15 ,16 ,17 ,18), selected = c(3,5,6,7), multiple = T)
+              choices = c("courier", "week", 
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
+  						multiple = T)
 
 )
   
 renderPlot({
 
-ggpairs(weekly.df, columns = as.numeric(input$features),  aes(colour = weekly.df$feature_18, alpha = 0.5))+theme_minimal()
+ggpairs(weekly.df, columns = input$features,  aes(colour = weekly.df$feature_18, alpha = 0.5))+theme_minimal()
 
 },height = 600, width = 800 
 )

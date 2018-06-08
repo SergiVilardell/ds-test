@@ -14,7 +14,7 @@ b <- as.vector(lifetime.df[ids,2])
 weekly.df$feature_18 <- b
 
 
-Correlation matrix and plot
+#Correlation matrix and plot
 corr.matrix <- round(cor(weekly.df[,-(1:2)]), 2)
 
 ggplot(lifetime.df[lifetime.df$feature_2 %in% -10:100 ], aes(x = feature_2))+
