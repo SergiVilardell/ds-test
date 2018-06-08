@@ -10,11 +10,12 @@ output:
     toc_float:
       collapsed: false
       smooth_scroll: true
+runtime: shiny
 ---
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(fig.width=6, fig.height=4,echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(data.table)
 library(corrplot)
@@ -119,6 +120,33 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 ```
 
 
+```{r, fig.width= 10, fig.width= 10}
+library(GGally)
+library(plotly)
+library(rsconnect)
+library(data.table)
+
+#Add lifetime feature_1 into weekly 
+ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
+b <- as.vector(lifetime.df[ids,2])
+weekly.df$feature_18 <- b
+
+weekly.df <<- weekly.df
+inputPanel(
+  selectInput("features", label = "Number of features:",
+              choices = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 ,15 ,16 ,17 ,18), selected = c(3,5,6,7), multiple = T)
+
+)
+  
+renderPlot({
+
+ggpairs(weekly.df, columns = as.numeric(input$features),  aes(colour = weekly.df$feature_18, alpha = 0.5))+theme_minimal()
+
+},height = 600, width = 800 
+)
+
+
+```
 
 ## Task 2: Predictive Algorithm
 

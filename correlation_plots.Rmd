@@ -10,9 +10,15 @@ runtime: shiny
 ```{r, fig.width= 10, fig.width= 6}
 library(GGally)
 library(plotly)
+library(rsconnect)
 library(data.table)
 
 source("sandbox.R")
+
+#Add lifetime feature_1 into weekly 
+ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
+b <- as.vector(lifetime.df[ids,2])
+weekly.df$feature_18 <- b
 
 weekly.df <<- weekly.df
 inputPanel(

@@ -1,0 +1,12 @@
+name: glovo-interview-report
+title: glovo-interview-report
+username:
+account: sergivilardell
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 357032
+bundleId: 1417198
+url: https://sergivilardell.shinyapps.io/glovo-interview-report/
+when: 1528391654.1915
+asMultiple: FALSE
+asStatic: FALSE
