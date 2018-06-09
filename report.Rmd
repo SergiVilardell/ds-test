@@ -21,6 +21,7 @@ library(data.table)
 library(corrplot)
 library(viridis)
 library(GGally)
+library(magrittr)
 ```
 
 ## Task 1: Exploratory Analysis
@@ -39,6 +40,7 @@ summary(lifetime.df)
 ```
 
 
+### Lifetime Data
 
 Let us begin with the lifetime data.
 ```{r}
@@ -109,7 +111,8 @@ filtered.data <- lifetime.df %>%
 	filter(feature_2 %in% -1:75)
 	
 ggplot(data = filtered.data, aes(x = feature_2))+
-	geom_histogram(binwidth = 1)
+	geom_histogram(binwidth = 1)+
+  theme_minimal()
 ```
 
 
@@ -168,6 +171,80 @@ ggpairs(weekly.df, columns = input$features,  aes(colour = weekly.df$feature_18,
 
 
 ```
+
+### Weekly Data
+
+```{r}
+weekly.df %>%
+  group_by(courier) %>%
+  summarise(n = n()) %>%
+  ggplot() +
+  geom_bar(aes(x = as.factor(n), y  = ..count../sum(..count..)*100, fill = (..count..))) +
+  theme_minimal() +
+  scale_fill_viridis(option = "D") +
+  theme(legend.position = "NONE") +
+  xlab("Number of Weeks worked") +
+  ylab("(%)")
+```
+
+
+$15\%$ of the couriers only work 1 week, let us analyse what happens with them
+```{r}
+#Churnition
+churn_df <- weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == TRUE)
+
+nochurn_df <-  weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == FALSE)
+
+churn_df <- churn_df %>%
+  sample_n(size = floor(nrow(nochurn_df)/nrow(churn_df)), replace = TRUE)
+
+churned <- rbind(churn_df, nochurn_df)
+```
+
+Plot with churn
+```{r}
+
+churned <<- churned
+inputPanel(
+  selectInput("feature", label = "Number of features:",
+              choices = c("courier", "week", 
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
+  						multiple = T)
+
+)
+  
+renderPlot({
+
+ggpairs(churned, columns = input$feature,  aes(colour = churn, alpha = 0.5))+theme_minimal()
+
+},height = 600, width = 800 
+)
+
+```
+
 
 ## Task 2: Predictive Algorithm
 
