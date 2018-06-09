@@ -15,7 +15,7 @@ runtime: shiny
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = F,  warn.conflicts = F)
 library(tidyverse)
 library(data.table)
 library(corrplot)
@@ -67,6 +67,7 @@ So about $12\%$ of the instances in `feature_2` are `NA` so they should not be i
 ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
 	geom_bar(colour = "black")+
 	theme_minimal()
+  
 ```
 
 Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless the proportion of `NA` values for each group seems to be similar.
@@ -112,7 +113,8 @@ filtered.data <- lifetime.df %>%
 	
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)+
-  theme_minimal()
+  theme_minimal()+
+  ggtitle("Histogram of feature_2")
 ```
 
 
@@ -121,9 +123,13 @@ Also separated by group:
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)+
 	facet_wrap(~feature_1)+
-	theme_minimal()
+	theme_minimal()+
+  ggtitle("Histrograms of feature_2 by feature_1")
 ```
 
+In order to fill the `NA` instances we will use bootstrap separately for each group in `feature_1`.
+
+### Weekly Data
 
 ```{r, fig.width= 10, fig.width= 10, echo = T}
 library(GGally)
@@ -172,7 +178,6 @@ ggpairs(weekly.df, columns = input$features,  aes(colour = weekly.df$feature_18,
 
 ```
 
-### Weekly Data
 
 ```{r}
 weekly.df %>%
@@ -184,7 +189,8 @@ weekly.df %>%
   scale_fill_viridis(option = "D") +
   theme(legend.position = "NONE") +
   xlab("Number of Weeks worked") +
-  ylab("(%)")
+  ylab("(%)")+
+  ggtitle("Barplot of total worked weeks")
 ```
 
 
@@ -243,6 +249,175 @@ ggpairs(churned, columns = input$feature,  aes(colour = churn, alpha = 0.5))+the
 },height = 600, width = 800 
 )
 
+```
+
+
+### Feature 3
+
+Let us analyse `feature_3` more deeply:
+
+```{r}
+library(MASS)
+emp <- weekly.df$feature_3
+emp.df <- weekly.df%>% 
+  dplyr::select(feature_3)
+
+ggplot(data = emp.df, aes (x = feature_3 ))+
+  geom_histogram(binwidth = 1)+
+  theme_minimal()+
+  ggtitle("HIstogram of feature_3")
+
+```
+
+
+This looks like the data is generated from a theoretical distribution. Let us look at some skewed probability distributions and see how they fit into our empirical distribution. We do so by estimating the parameters that best fit our empirical data compared to different theoretical distributions. We then generate theoretical data with those parameters, and compare the empirical and theoretical distributions:
+
+```{r}
+# Poisson
+fit_poisson <- fitdistr(emp, "poisson")
+theo <- rpois(length(emp), lambda = fit_poisson$estimate[["lambda"]])
+qqplot(emp,theo)
+```
+
+The Poission distribution does not seem to match our distribution.
+
+```{r}
+# Gamma
+fit_gamma <- fitdistr(emp, "gamma")
+theo <- rgamma(length(emp), shape = fit_gamma$estimate[["shape"]], rate = fit_gamma$estimate[["rate"]])
+qqplot(emp,theo)
+```
+
+The gamma distribution seems to fit better, but let us look into another distribution:
+
+```{r}
+# Weibull
+fit_weibull <- fitdistr(emp, "weibull")
+theo <- rweibull(length(emp), shape = fit_weibull$estimate[["shape"]], scale = fit_weibull$estimate[["scale"]])
+qqplot(emp,theo)
+```
+
+The Weibull distribution seems to fit quite well. It looks quite like straight line, but let us make it sure. Let us build a Kolmogorov-Smirnov test. First we perform a Kolmogorov-Smirnov test with all the data from the empirical distribution:
+
+```{r}
+e0 <- ks.test(emp,
+              "pweibull", shape = fit_weibull$estimate[["shape"]],
+              scale = fit_weibull$estimate[["scale"]]
+)$statistic
+e0
+```
+
+With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, we cannot reject the hypothesis that our empirical distribution is not a Weibull distribution. Let us perform the test:
+
+```{r}
+
+estimates <- c()
+for(i in 1:1e4){
+  estimates[i] <- ks.test(sample(emp, size = 1e2, replace = TRUE),
+                          "pweibull", shape = fit_weibull$estimate[["shape"]],
+                          scale = fit_weibull$estimate[["scale"]]
+  )$statistic
+}
+
+estimates.df <- data.frame(estimates)
+ggplot(data = estimates.df, aes(x = estimates))+
+  geom_histogram(binwidth = 0.003)+
+  theme_minimal()+
+  ggtitle("Histogram of the KS-test statistic")
+```
+
+We can see that the histogram of the statistic follows a Kolmogorov distribution quite well. Moreover we can compute the p-value of this test by looking at the position of the first estimate for the Kolmogorov distances that we computed $D = 0.02$ in the cumulative distribution function of the estimates: 
+
+```{r}
+z <- ecdf(estimates)
+1-z(e0)
+```
+ With p-value $1$ we cannot reject the hypothesis that our empirical distribution is not a Weibull. So by the tests performed in the qqplot and the Kolmogorov-Smirnov test we can say with great confidence that `feature_3` is generated from a Weibull distribution. Nevertheless the data from `feature_3` is discrete, and the Weibull is a continuous distribution. It looks as if the data is generated by a Weibull and then has been truncated.
+ 
+```{r}
+theo.df <- data.frame(theo = floor(rweibull(length(emp), shape = fit_weibull$estimate[["shape"]], scale = fit_weibull$estimate[["scale"]])))
+
+theo.plot <- ggplot(data = theo.df, aes(x = theo))+
+  geom_histogram(binwidth = 1)+
+  theme_minimal()
+
+emp.plot <- ggplot(data = emp.df, aes (x = feature_3 ))+
+  geom_histogram(binwidth = 1)+
+  theme_minimal()
+
+ggmatrix(list(theo.plot, emp.plot), nrow = 2, ncol = 1, yAxisLabels= c("Theoretical","Empirical"), xlab = "asd")+
+  ggtitle("Comparison of the theoretical and empirical histograms")
+```
+
+They look very similar. This should be enough evidence to claim that `feature_3` is indeed a truncated Weibull distribution.
+
+### Label Data
+
+```{r}
+# Train Model -------------------------------------------------------------
+
+colnames(lifetime.df) <- c("courier", "feature_18", "feature_19")
+total.df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
+
+
+ids <- unique(total.df$courier)
+total.df$target <- NA
+train.df <- total.df %>% data.frame()
+weeks.of.interest <- c(9,10,11)
+courier <- train.df[["courier"]]
+week <- train.df[["week"]]
+for(i in ids){
+  if(sum(week[which(courier == i)] %in% weeks.of.interest) == 3){
+    train.df[train.df$courier == i,"target"] <- 0
+  }else{
+    train.df[train.df$courier == i,"target"] <- 1
+  }
+}
+
+
+train.df <- train.df[, -c(20,21)] 
+train.df %<>% 
+  group_by(courier) %>% 
+  filter(!(week %in% c(8,9,10,11))) %>% 
+  summarise_all("mean") 
+```
+
+
+```{r}
+
+
+train.df <<- train.df 
+inputPanel(
+  selectInput("featur", label = "Number of features:",
+              choices = c("courier", "week", 
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_1", "feature_2","feature_3", "feature_4"), 
+  						multiple = T)
+
+)
+  
+renderPlot({
+
+ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha = 0.3))+theme_minimal()
+
+},height = 600, width = 800 
+)
 ```
 
 

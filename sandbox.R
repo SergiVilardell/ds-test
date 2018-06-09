@@ -5,6 +5,7 @@ library(viridis)
 library(GGally)
 library(fitdistrplus)
 library(broom)
+library(magrittr)
 
 #Read data
 lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
@@ -16,42 +17,25 @@ b <- as.vector(lifetime.df[ids,2])
 weekly.df$feature_18 <- b
 
 
-#Correlation matrix and plot
-corr.matrix <- round(cor(weekly.df[,-(1:2)]), 2)
+# NAs ---------------------------------------------------------------------
 
-ggplot(lifetime.df[lifetime.df$feature_2 %in% -10:100 ], aes(x = feature_2))+
-  geom_histogram(binwidth = 1)+
-  facet_wrap(~feature_1)
-
-ggplot(lifetime.df, aes(x = feature_1))+
-  geom_bar()
+table.NA <- table(lifetime.df$is_na, lifetime.df$feature_1)
 
 
+list.NA <- list()
+ 
+group = c("a", "b", "c", "d")
 
-
-plot(lifetime.df$feature_2[lifetime.df$feature_2 %in% -10:100 ], col = as.factor(lifetime.df$feature_1))
-
-
-
-#PRAISE HADLEY
-ggpairs(weekly.df[, c(3:10)], aes(colour = weekly.df$feature_18, alpha = 0.5))
+for( i in 1:4){
+beh <- lifetime.df %>%
+    filter(feature_1 == group[i], is_na == F) 
+  
+list.NA[[i]] <- sample(beh$feature_2, table.NA[,group[i]][2], replace = T)
+}
 
 
 
-
-
-
-#PRAISE HADLEY
-a <- ggpairs(weekly.df[, c(3:10)], aes(colour = weekly.df$feature_18, alpha = 0.5))
-ggally_cor(weekly.df[, c(3:10)])
-
-
-corrplot(corr.matrix, method = "color", col = viridis(200),
-         type = "upper", order = "hclust", number.cex = .7,
-         addCoef.col = "black",
-         tl.col = "black",
-         diag = FALSE)
-
+# Plots AL bleh -----------------------------------------------------------
 
 
 weekly.df %>%
@@ -188,26 +172,28 @@ barplot(table(emp))
 
 # Train Model -------------------------------------------------------------
 
-#Read data
-lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
-weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
-
 colnames(lifetime.df) <- c("courier", "feature_18", "feature_19")
-total_df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
+total.df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
 
 
-ids <- unique(total_df$courier)
-total_df$target <- NA
-x <- total_df %>% data.frame()
-weeks_of_interest <- c(9,10,11)
-courier <- x[["courier"]]
-week <- x[["week"]]
+ids <- unique(total.df$courier)
+total.df$target <- NA
+train.df <- total.df %>% data.frame()
+weeks.of.interest <- c(9,10,11)
+courier <- train.df[["courier"]]
+week <- train.df[["week"]]
 for(i in ids){
-  if(sum(week[which(courier == i)] %in% weeks_of_interest) == 3){
-    x[x$courier == i,"target"] <- 0
+  if(sum(week[which(courier == i)] %in% weeks.of.interest) == 3){
+    train.df[train.df$courier == i,"target"] <- 0
   }else{
-    x[x$courier == i,"target"] <- 1
+    train.df[train.df$courier == i,"target"] <- 1
   }
 }
-total_df
+
+train.df <- train.df[, -c(20,21)] 
+train.df %<>% 
+  group_by(courier) %>% 
+  filter(!(week %in% c(8,9,10,11))) %>% 
+  summarise_all("mean")
+
 
