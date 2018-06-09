@@ -245,7 +245,6 @@ inputPanel(
 renderPlot({
 
 ggpairs(churned, columns = input$feature,  aes(colour = churn, alpha = 0.5))+theme_minimal()
-
 },height = 600, width = 800 
 )
 
@@ -309,7 +308,7 @@ e0
 
 With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, we cannot reject the hypothesis that our empirical distribution is not a Weibull distribution. Let us perform the test:
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 estimates <- c()
 for(i in 1:1e4){
@@ -328,7 +327,7 @@ ggplot(data = estimates.df, aes(x = estimates))+
 
 We can see that the histogram of the statistic follows a Kolmogorov distribution quite well. Moreover we can compute the p-value of this test by looking at the position of the first estimate for the Kolmogorov distances that we computed $D = 0.02$ in the cumulative distribution function of the estimates: 
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 z <- ecdf(estimates)
 1-z(e0)
 ```

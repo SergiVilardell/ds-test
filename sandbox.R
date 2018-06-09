@@ -18,6 +18,8 @@ weekly.df$feature_18 <- b
 
 
 # NAs ---------------------------------------------------------------------
+lifetime.df <- lifetime.df %>% 
+  mutate( is_na = ifelse(is.na(feature_2), T, F))
 
 table.NA <- table(lifetime.df$is_na, lifetime.df$feature_1)
 
@@ -33,7 +35,10 @@ beh <- lifetime.df %>%
 list.NA[[i]] <- sample(beh$feature_2, table.NA[,group[i]][2], replace = T)
 }
 
+a.df <-  lifetime.df%>% 
+  filter(feature_1 == "a") 
 
+a.df$feature_2[is.na(boh$feature_2)] <- list.NA[[1]][1:sum(boh$is_na)]
 
 # Plots AL bleh -----------------------------------------------------------
 
