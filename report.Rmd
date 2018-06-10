@@ -422,6 +422,7 @@ ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha
 
 ## Task 2: Predictive Algorithm
 
+
 Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
 
 

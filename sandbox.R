@@ -35,10 +35,40 @@ beh <- lifetime.df %>%
 list.NA[[i]] <- sample(beh$feature_2, table.NA[,group[i]][2], replace = T)
 }
 
+#GUARRO
+
 a.df <-  lifetime.df%>% 
   filter(feature_1 == "a") 
 
-a.df$feature_2[is.na(boh$feature_2)] <- list.NA[[1]][1:sum(boh$is_na)]
+a.df$feature_2[is.na(a.df$feature_2)] <- list.NA[[1]][1:sum(a.df$is_na)]
+
+b.df <-  lifetime.df%>% 
+  filter(feature_1 == "b") 
+
+b.df$feature_2[is.na(b.df$feature_2)] <- list.NA[[2]][1:sum(b.df$is_na)]
+
+c.df <-  lifetime.df%>% 
+  filter(feature_1 == "c") 
+
+c.df$feature_2[is.na(c.df$feature_2)] <- list.NA[[3]][1:sum(c.df$is_na)]
+
+d.df <-  lifetime.df%>% 
+  filter(feature_1 == "d") 
+
+d.df$feature_2[is.na(d.df$feature_2)] <- list.NA[[4]][1:sum(d.df$is_na)]
+
+
+lifetime.df <- rbind(a.df, b.df, c.df, d.df)
+
+
+
+
+
+#Add lifetime feature_2 into weekly
+ids <-  match(weekly.df[["courier"]], replaced.df[["courier"]])
+b <- as.vector(replaced.df[ids,3])
+weekly.df$feature_19 <- b
+
 
 # Plots AL bleh -----------------------------------------------------------
 
@@ -195,10 +225,71 @@ for(i in ids){
   }
 }
 
-train.df <- train.df[, -c(20,21)] 
+
+
 train.df %<>% 
   group_by(courier) %>% 
   filter(!(week %in% c(8,9,10,11))) %>% 
   summarise_all("mean")
 
+#Add lifetime feature_1 into weekly
+ids <-  match(train.df[["courier"]], lifetime.df[["courier"]])
+b <- as.vector(lifetime.df[ids,2])
+train.df$feature_18 <- b
+
+train.df <- train.df[, -20]
+write_csv(train.df, "train.csv")
+
+
+
+
+# Random Forest -----------------------------------------------------------
+
+
+library(randomForest)
+
+train.df <- fread("train.csv", sep = ",", header= TRUE)
+train.df$target <- as.factor(train.df$target)
+train.df$feature_18 <- as.factor(train.df$feature_18)
+
+set.seed(666)
+one.df <- train.df %>% 
+  filter(target == 1) %>% 
+  sample_n(123)
+
+zero.df <- train.df %>% 
+  filter(target == 0) 
+
+train.sampled <- rbind(zero.df, one.df)
+
+
+
+
+
+rf_model <- randomForest(formula = target ~ ., 
+                         data = train.sampled, 
+                         mtry = 4, 
+                         ntree = 8000, 
+                         nodesize=15
+                         )
+print(rf_model)
+
+
+# Show model error
+plot(rf_model$err.rate[,1],ylab = "OOB error", xlab = "Trees")
+plot(rf_model$err.rate[,2],ylab = "0 class. error", xlab = "Trees")
+plot(rf_model$err.rate[,3],ylab = "1 class. error", xlab = "Trees")
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+
+## IMPORTANCE OF THE VARIABLES ##
+
+# Get importance
+table(rf_model$confusion)
+varImpPlot(rf_model)
+
+# MEASURING THE PREDICTIVE ABILITY OF THE MODEL
+rf.pred <- predict(rf_model, rf.test[,-1])
+rf.pred <- ifelse(rf.pred> 0.5,1,0)
+confmat <- table(observed = rf.test[, "is_duplicate"], predicted = rf.pred)
+result <- (confmat[1,1]+confmat[2,2]+3441)/(sum(confmat)+3441)
 
