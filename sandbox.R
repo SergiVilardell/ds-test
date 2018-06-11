@@ -11,10 +11,6 @@ library(magrittr)
 lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
 weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 
-#Add lifetime feature_1 into weekly
-ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
-b <- as.vector(lifetime.df[ids,2])
-weekly.df$feature_18 <- b
 
 
 # NAs ---------------------------------------------------------------------
@@ -22,7 +18,6 @@ lifetime.df <- lifetime.df %>%
   mutate( is_na = ifelse(is.na(feature_2), T, F))
 
 table.NA <- table(lifetime.df$is_na, lifetime.df$feature_1)
-
 
 list.NA <- list()
  
@@ -136,6 +131,12 @@ library(MASS)
 emp <- weekly.df$feature_3
 hist(emp)
 
+fit_lognorm <- fitdistr(emp, "lognormal")
+theo <- rlnorm(length(emp), 
+			   meanlog = fit_lognorm$estimate[["meanlog"]], 
+			   sdlog = fit_lognorm$estimate[["sdlog"]])
+qqplot(emp,theo)
+
 
 # Poisson
 fit_poisson <- fitdistr(emp, "poisson")
@@ -224,12 +225,13 @@ for(i in ids){
     train.df[train.df$courier == i,"target"] <- 1
   }
 }
-
+train.df <- train.df[,-22]
 
 
 train.df %<>% 
   group_by(courier) %>% 
   filter(!(week %in% c(8,9,10,11))) %>% 
+  mutate(worked_weeks = n()) %>% 
   summarise_all("mean")
 
 #Add lifetime feature_1 into weekly
@@ -237,17 +239,12 @@ ids <-  match(train.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 train.df$feature_18 <- b
 
-train.df <- train.df[, -20]
 write_csv(train.df, "train.csv")
 
 
 
-
 # Random Forest -----------------------------------------------------------
-
-
 library(randomForest)
-
 train.df <- fread("train.csv", sep = ",", header= TRUE)
 train.df$target <- as.factor(train.df$target)
 train.df$feature_18 <- as.factor(train.df$feature_18)
@@ -263,16 +260,19 @@ zero.df <- train.df %>%
 train.sampled <- rbind(zero.df, one.df)
 
 
-
-
-
 rf_model <- randomForest(formula = target ~ ., 
-                         data = train.sampled, 
-                         mtry = 4, 
-                         ntree = 8000, 
-                         nodesize=15
-                         )
+						 data = train.df, 
+						 mtry = 4, 
+						 ntree = 8000, 
+						 nodesize=15,
+						 sampsize = floor(0.7*nrow(train.df)),
+						 do.trace = 10
+)
+
 print(rf_model)
+
+
+
 
 
 # Show model error
@@ -292,4 +292,5 @@ rf.pred <- predict(rf_model, rf.test[,-1])
 rf.pred <- ifelse(rf.pred> 0.5,1,0)
 confmat <- table(observed = rf.test[, "is_duplicate"], predicted = rf.pred)
 result <- (confmat[1,1]+confmat[2,2]+3441)/(sum(confmat)+3441)
+
 

@@ -22,16 +22,19 @@ library(corrplot)
 library(viridis)
 library(GGally)
 library(magrittr)
+library(qqplotr)
+library(MASS)
+library(plotly)
+library(rsconnect)
+library(randomForest)
 ```
 
 ## Task 1: Exploratory Analysis
 
 Let us describe the data given a little bit:
 
-
-
 ```{r}
-#Read data
+# Read data
 lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
 weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 
@@ -51,28 +54,29 @@ glimpse(lifetime.df)
 Here we have a column for the id of each `courier`, a categorical feature in `feature_1` with values `a,b,c,d`, and a numerical feature in `feature_2`. Note that in `feature_2` there are `NA`, therefore we should compute how many instances there are with missing values:
 
 ```{r}
-#Add column to account for the NAs
+# Add column to account for the NAs
 # T == NA, F != NA
 lifetime.df <- lifetime.df %>% 
 	mutate( is_na = ifelse(is.na(feature_2), T, F))
 
-#Check how many NAs we have
+# Check how many NAs we have
 lifetime.df %>%  
 	count(is_na)
 ```
 
 So about $12\%$ of the instances in `feature_2` are `NA` so they should not be ignored. It is interesting to see the number of instances fo each group in `feature_1` and also the distribution of `NA` in said groups.
 
-```{r}
+```{r echo=FALSE}
 ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
 	geom_bar(colour = "black")+
+	ggtitle("Lifetime's feature_1 barplot")+
 	theme_minimal()
-  
 ```
 
 Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless the proportion of `NA` values for each group seems to be similar.
 
 ```{r}
+# Counting NAs
 lifetime.df %>% 
 	group_by(feature_1) %>% 
 	summarise(sum(is_na)/n())
@@ -84,13 +88,14 @@ Except in `c` all other groups have similar `NA` proportion, which maybe due to 
 
 Quick plot to viasualize `feature_2`:
 
-```{r}
-plot(lifetime.df$feature_2)
+```{r echo=FALSE}
+plot(lifetime.df$feature_2, main = "Overview of Lifetime's feature 2")
 ```
 
 All values lie within the same range except some outliers: the three instances with value above 900.
 
 ```{r}
+# Filtering big numbers
 lifetime.df %>% 
 	drop_na() %>% 
 	filter(feature_2 > 200)
@@ -98,6 +103,7 @@ lifetime.df %>%
  And the negative numbers:
  
 ```{r}
+# Filtering negatives numbers
 lifetime.df %>% 
 	drop_na() %>% 
 	filter(feature_2 < 0)
@@ -106,45 +112,149 @@ lifetime.df %>%
  They are outliers not because their value differ from the mean, but because they are the only negative numbers and so they should be treated with caution depending on what `feature_2` means. Without knowing what this data is representing we can only stand out its deviation from the regular behaviour. Furthermore both outliers belong to either group `a` or `b`. 
  
 Let us see the distribution of `feature_2` without the outliers:
-```{r}
+```{r echo=FALSE}
 filtered.data <- lifetime.df %>% 
 	drop_na() %>% 
 	filter(feature_2 %in% -1:75)
 	
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)+
-  theme_minimal()+
-  ggtitle("Histogram of feature_2")
+	theme_minimal()+
+	ggtitle("Histogram of feature_2")
 ```
 
 
 Also separated by group:
-```{r}
+```{r echo=FALSE}
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)+
 	facet_wrap(~feature_1)+
 	theme_minimal()+
-  ggtitle("Histrograms of feature_2 by feature_1")
+	ggtitle("Histrograms of feature_2 by feature_1")
 ```
 
-In order to fill the `NA` instances we will use bootstrap separately for each group in `feature_1`.
+In order to fill the `NA` instances we will use bootstrap separately for each group in `feature_1`. In this way each instance is represented in the same way as the others from each group. This is a reasonable solution to fill `NA` values without knowing the meaning of the variable, as it ill preserve the distribution of the values in `feature_2`.
+
+```{r include=FALSE}
+lifetime.df <- lifetime.df %>% 
+  mutate( is_na = ifelse(is.na(feature_2), T, F))
+
+table.NA <- table(lifetime.df$is_na, lifetime.df$feature_1)
+
+
+list.NA <- list()
+ 
+group = c("a", "b", "c", "d")
+
+for( i in 1:4){
+beh <- lifetime.df %>%
+    filter(feature_1 == group[i], is_na == F) 
+  
+list.NA[[i]] <- sample(beh$feature_2, table.NA[,group[i]][2], replace = T)
+}
+
+# GUARRO
+
+a.df <-  lifetime.df%>% 
+  filter(feature_1 == "a") 
+
+a.df$feature_2[is.na(a.df$feature_2)] <- list.NA[[1]][1:sum(a.df$is_na)]
+
+b.df <-  lifetime.df%>% 
+  filter(feature_1 == "b") 
+
+b.df$feature_2[is.na(b.df$feature_2)] <- list.NA[[2]][1:sum(b.df$is_na)]
+
+c.df <-  lifetime.df%>% 
+  filter(feature_1 == "c") 
+
+c.df$feature_2[is.na(c.df$feature_2)] <- list.NA[[3]][1:sum(c.df$is_na)]
+
+d.df <-  lifetime.df%>% 
+  filter(feature_1 == "d") 
+
+d.df$feature_2[is.na(d.df$feature_2)] <- list.NA[[4]][1:sum(d.df$is_na)]
+
+
+lifetime.df <- rbind(a.df, b.df, c.df, d.df)
+
+```
+
+```{r echo=FALSE}
+filtered.data <- lifetime.df %>% 
+	drop_na() %>% 
+	filter(feature_2 %in% -1:75)
+	
+ggplot(data = filtered.data, aes(x = feature_2))+
+	geom_histogram(binwidth = 1)+
+  	theme_minimal()+
+  	ggtitle("Histogram of feature_2 without NAs")
+```
+
+
 
 ### Weekly Data
 
-```{r, fig.width= 10, fig.width= 10, echo = T}
-library(GGally)
-library(plotly)
-library(rsconnect)
-library(data.table)
+```{r}
+glimpse(weekly.df)
+```
 
-#Add lifetime feature_1 into weekly 
+Here in `weekly_data` there is a record for the worked weeks of some of the couriers. There is the `courier` column with the courier id, the column `week` for the worked week, and the rest are numerical features from 1 to 17. Let us explore those variables by plotting their distributions and the correlations among them
+
+
+```{r echo=FALSE}
+
+weekly.df <<- weekly.df
+inputPanel(
+  selectInput("features", label = "Select features:",
+              choices = c(
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_1", "feature_3", "feature_4", "feature_5", "feature_7"), 
+  						multiple = T)
+
+)
+  
+renderPlot({
+
+ggpairs(weekly.df, 
+		columns = input$features, aes(alpha = 0.2))+
+		theme_minimal()+
+		ggtitle("Correlation and Distribution plots for Weekly data")
+
+},height = 600, width = 800 
+)
+
+```
+
+It is interesting to look in detail at some correlations. The first that stands out the most is the correlation between `feature_4` and `feature_5` as they have a correlation of `-1`. We can easily see that the features follow `feature_4 + feature_5 = 1`, meaning that we can get rid of either one because they have the same information. 
+
+We can also explore the distribution of the data by grouping with `feature_1` of `lifetime_data` to see if we can gather some more information.
+
+```{r echo=FALSE, fig.width=10}
+# Add lifetime feature_1 into weekly 
 ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 weekly.df$feature_18 <- b
 
 weekly.df <<- weekly.df
 inputPanel(
-  selectInput("features", label = "Number of features:",
+  selectInput("features", label = "Select features:",
               choices = c("courier", "week", 
               			"feature_1", 
               			"feature_2", 
@@ -163,14 +273,19 @@ inputPanel(
               			"feature_15",
               			"feature_16",
               			"feature_17"), 
-  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
+  						selected = c("feature_3", "feature_4", "feature_5", "feature_7"), 
   						multiple = T)
 
 )
   
 renderPlot({
 
-ggpairs(weekly.df, columns = input$features,  aes(colour = weekly.df$feature_18, alpha = 0.5))+theme_minimal()
+ggpairs(weekly.df, 
+		columns = input$features,  
+		aes(colour = weekly.df$feature_18, 
+			alpha = 0.5))+
+		theme_minimal()+
+		ggtitle("Correlation and Distribution plots for Weekly data by feature_18")
 
 },height = 600, width = 800 
 )
@@ -178,85 +293,15 @@ ggpairs(weekly.df, columns = input$features,  aes(colour = weekly.df$feature_18,
 
 ```
 
-
-```{r}
-weekly.df %>%
-  group_by(courier) %>%
-  summarise(n = n()) %>%
-  ggplot() +
-  geom_bar(aes(x = as.factor(n), y  = ..count../sum(..count..)*100, fill = (..count..))) +
-  theme_minimal() +
-  scale_fill_viridis(option = "D") +
-  theme(legend.position = "NONE") +
-  xlab("Number of Weeks worked") +
-  ylab("(%)")+
-  ggtitle("Barplot of total worked weeks")
-```
-
-
-$15\%$ of the couriers only work 1 week, let us analyse what happens with them
-```{r}
-#Churnition
-churn_df <- weekly.df %>%
-  group_by(courier) %>%
-  mutate(churn = (n() == 1)) %>%
-  filter(churn == TRUE)
-
-nochurn_df <-  weekly.df %>%
-  group_by(courier) %>%
-  mutate(churn = (n() == 1)) %>%
-  filter(churn == FALSE)
-
-churn_df <- churn_df %>%
-  sample_n(size = floor(nrow(nochurn_df)/nrow(churn_df)), replace = TRUE)
-
-churned <- rbind(churn_df, nochurn_df)
-```
-
-Plot with churn
-```{r}
-
-churned <<- churned
-inputPanel(
-  selectInput("feature", label = "Number of features:",
-              choices = c("courier", "week", 
-              			"feature_1", 
-              			"feature_2", 
-              			"feature_3",
-              			"feature_4", 
-              			"feature_5",
-              			"feature_6", 
-              			"feature_7", 
-              			"feature_8", 
-              			"feature_9", 
-              			"feature_10", 
-              			"feature_11", 
-              			"feature_12",
-              			"feature_13",
-              			"feature_14",
-              			"feature_15",
-              			"feature_16",
-              			"feature_17"), 
-  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
-  						multiple = T)
-
-)
-  
-renderPlot({
-
-ggpairs(churned, columns = input$feature,  aes(colour = churn, alpha = 0.5))+theme_minimal()
-},height = 600, width = 800 
-)
-
-```
+Our assumption that `feature_2` from `lifetime_data` may be able to distinguish some couriers from the others seems not to hold. Correlations between variables are very similar even among groups. The ony group that stands out is `c`. The correlation when computed with the instances of group `c` are very high among variables, but this could be due to the low sample size of group `c` so it should not be trusted. 
 
 
 ### Feature 3
 
 Let us analyse `feature_3` more deeply:
 
-```{r}
-library(MASS)
+```{r echo=FALSE}
+
 emp <- weekly.df$feature_3
 emp.df <- weekly.df%>% 
   dplyr::select(feature_3)
@@ -274,33 +319,76 @@ This looks like the data is generated from a theoretical distribution. Let us lo
 ```{r}
 # Poisson
 fit_poisson <- fitdistr(emp, "poisson")
-theo <- rpois(length(emp), lambda = fit_poisson$estimate[["lambda"]])
-qqplot(emp,theo)
+theo <- rpois(length(emp),
+			  lambda = fit_poisson$estimate[["lambda"]])
 ```
+
+```{r echo=FALSE}
+qqplot(emp,theo, 
+	   main = "QQ plot with Gamma distribution", 
+	   ylab = "Theoretical Quantiles",
+	   xlab = "Empirical Quantiles")
+```
+
+```{r}
+fit_lognorm <- fitdistr(emp, "lognormal")
+theo <- rlnorm(length(emp), 
+			   meanlog = fit_lognorm$estimate[["meanlog"]], 
+			   sdlog = fit_lognorm$estimate[["sdlog"]])
+```
+
+```{r, echo = F}
+qqplot(emp,theo,   
+	   main = "QQ plot with Lognormal distribution", 
+	   ylab = "Theoretical Quantiles",
+	   xlab = "Empirical Quantiles")
+```
+
 
 The Poission distribution does not seem to match our distribution.
 
 ```{r}
 # Gamma
 fit_gamma <- fitdistr(emp, "gamma")
-theo <- rgamma(length(emp), shape = fit_gamma$estimate[["shape"]], rate = fit_gamma$estimate[["rate"]])
-qqplot(emp,theo)
+theo <- rgamma(length(emp), 
+			   shape = fit_gamma$estimate[["shape"]], 
+			   rate = fit_gamma$estimate[["rate"]])
 ```
+
+```{r echo=FALSE}
+qqplot(emp,theo, 
+	   main = "QQ plot with Gamma distribution", 
+	   ylab = "Theoretical Quantiles",
+	   xlab = "Empirical Quantiles")
+```
+
 
 The gamma distribution seems to fit better, but let us look into another distribution:
 
 ```{r}
 # Weibull
 fit_weibull <- fitdistr(emp, "weibull")
-theo <- rweibull(length(emp), shape = fit_weibull$estimate[["shape"]], scale = fit_weibull$estimate[["scale"]])
-qqplot(emp,theo)
+theo <- rweibull(length(emp), 
+				 shape = fit_weibull$estimate[["shape"]], 
+				 scale = fit_weibull$estimate[["scale"]])
 ```
+
+```{r echo=FALSE}
+qqplot(emp,theo, 
+	   main = "QQ plot with Gamma distribution", 
+	   ylab = "Theoretical Quantiles",
+	   xlab = "Empirical Quantiles")
+```
+
+
 
 The Weibull distribution seems to fit quite well. It looks quite like straight line, but let us make it sure. Let us build a Kolmogorov-Smirnov test. First we perform a Kolmogorov-Smirnov test with all the data from the empirical distribution:
 
 ```{r}
+# Kolmogorov-Smirnov
 e0 <- ks.test(emp,
-              "pweibull", shape = fit_weibull$estimate[["shape"]],
+              "pweibull",
+			  shape = fit_weibull$estimate[["shape"]],
               scale = fit_weibull$estimate[["scale"]]
 )$statistic
 e0
@@ -308,33 +396,46 @@ e0
 
 With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, we cannot reject the hypothesis that our empirical distribution is not a Weibull distribution. Let us perform the test:
 
-```{r eval=FALSE, include=FALSE}
-
+```{r eval=FALSE}
+# Kolmogorov-Smirnov sampling test
 estimates <- c()
-for(i in 1:1e4){
+for(i in 1:1e5){
   estimates[i] <- ks.test(sample(emp, size = 1e2, replace = TRUE),
                           "pweibull", shape = fit_weibull$estimate[["shape"]],
                           scale = fit_weibull$estimate[["scale"]]
   )$statistic
 }
 
-estimates.df <- data.frame(estimates)
+
+```
+
+```{r echo=FALSE}
+estimates.df <- read.csv("estimates.csv", sep = ",", header= TRUE)
 ggplot(data = estimates.df, aes(x = estimates))+
   geom_histogram(binwidth = 0.003)+
   theme_minimal()+
   ggtitle("Histogram of the KS-test statistic")
 ```
 
+
 We can see that the histogram of the statistic follows a Kolmogorov distribution quite well. Moreover we can compute the p-value of this test by looking at the position of the first estimate for the Kolmogorov distances that we computed $D = 0.02$ in the cumulative distribution function of the estimates: 
 
-```{r eval=FALSE, include=FALSE}
-z <- ecdf(estimates)
+```{r}
+# Evaluation of the test
+z <- ecdf(estimates.df$estimates)
 1-z(e0)
 ```
  With p-value $1$ we cannot reject the hypothesis that our empirical distribution is not a Weibull. So by the tests performed in the qqplot and the Kolmogorov-Smirnov test we can say with great confidence that `feature_3` is generated from a Weibull distribution. Nevertheless the data from `feature_3` is discrete, and the Weibull is a continuous distribution. It looks as if the data is generated by a Weibull and then has been truncated.
  
 ```{r}
-theo.df <- data.frame(theo = floor(rweibull(length(emp), shape = fit_weibull$estimate[["shape"]], scale = fit_weibull$estimate[["scale"]])))
+# Truncating a theorietical Weibull distribution
+theo.df <- data.frame(theo = floor(rweibull(length(emp), 
+					  shape = fit_weibull$estimate[["shape"]],
+					  scale = fit_weibull$estimate[["scale"]])
+					  ))
+```
+
+```{r echo=FALSE}
 
 theo.plot <- ggplot(data = theo.df, aes(x = theo))+
   geom_histogram(binwidth = 1)+
@@ -348,46 +449,55 @@ ggmatrix(list(theo.plot, emp.plot), nrow = 2, ncol = 1, yAxisLabels= c("Theoreti
   ggtitle("Comparison of the theoretical and empirical histograms")
 ```
 
+
 They look very similar. This should be enough evidence to claim that `feature_3` is indeed a truncated Weibull distribution.
 
-### Label Data
 
-```{r}
-# Train Model -------------------------------------------------------------
+### Churn
 
-colnames(lifetime.df) <- c("courier", "feature_18", "feature_19")
-total.df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
+Let us explore how many weeks the couriers work and if it has any impact on the data they show.
 
-
-ids <- unique(total.df$courier)
-total.df$target <- NA
-train.df <- total.df %>% data.frame()
-weeks.of.interest <- c(9,10,11)
-courier <- train.df[["courier"]]
-week <- train.df[["week"]]
-for(i in ids){
-  if(sum(week[which(courier == i)] %in% weeks.of.interest) == 3){
-    train.df[train.df$courier == i,"target"] <- 0
-  }else{
-    train.df[train.df$courier == i,"target"] <- 1
-  }
-}
-
-
-train.df <- train.df[, -c(20,21)] 
-train.df %<>% 
-  group_by(courier) %>% 
-  filter(!(week %in% c(8,9,10,11))) %>% 
-  summarise_all("mean") 
+```{r echo=FALSE}
+weekly.df %>%
+  group_by(courier) %>%
+  summarise(n = n()) %>%
+  ggplot() +
+  geom_bar(aes(x = as.factor(n), y  = ..count../sum(..count..)*100, fill = (..count..))) +
+  theme_minimal() +
+  scale_fill_viridis(option = "D") +
+  theme(legend.position = "NONE") +
+  xlab("Number of Weeks worked") +
+  ylab("(%)")+
+  ggtitle("Barplot of total worked weeks")
 ```
 
 
+We can see that approximately $15\%$ of the couriers only work 1 week, let us analyse what happens with them
 ```{r}
+# Churn
+churn_df <- weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == TRUE)
 
+nochurn_df <-  weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == FALSE)
 
-train.df <<- train.df 
+churn_df <- churn_df %>%
+  sample_n(size = floor(nrow(nochurn_df)/nrow(churn_df)), replace = TRUE)
+
+churned <- rbind(churn_df, nochurn_df)
+```
+
+We create the variable `churn` to label the couriers with `1` if they only work one week, and `0` otherwise.
+
+```{r echo=FALSE}
+
+churned <<- churned
 inputPanel(
-  selectInput("featur", label = "Number of features:",
+  selectInput("feature", label = "Select features:",
               choices = c("courier", "week", 
               			"feature_1", 
               			"feature_2", 
@@ -406,7 +516,89 @@ inputPanel(
               			"feature_15",
               			"feature_16",
               			"feature_17"), 
-  						selected = c("feature_1", "feature_2","feature_3", "feature_4"), 
+  						selected = c("feature_1","feature_3", "feature_5", "feature_7"), 
+  						multiple = T)
+
+)
+  
+renderPlot(
+	{ggpairs(churned, 
+			columns = input$feature,  
+			aes(colour = churn, alpha = 0.5))+
+			theme_minimal()+
+			ggtitle("Correlation and distribution plots for Weekly data by churn")},
+
+	height = 600, width = 800 
+)
+
+```
+
+We can see how the couriers behave differently whether they churn or not. Now depending on the meaning of the variables one could infer in what makes a courier work more or less than the others.
+
+### Label Data
+
+```{r include=FALSE}
+weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
+```
+
+
+ Here we label the data according to the guidance given. It is interesting now to generate once more the correlation and distribution plots grouped by the label. In order to give each courier one instance of data as it would be fed into the model, we collapse all instances of each courier with their mean. Also we create an additional variable named `worked_weeks` which may be relevant to classify the couriers.
+```{r}
+# Labeling the data
+
+colnames(lifetime.df) <- c("courier", "feature_18", "feature_19")
+total.df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
+ids <- unique(total.df$courier)
+total.df$target <- NA
+train.df <- total.df %>% data.frame()
+weeks.of.interest <- c(9,10,11)
+courier <- train.df[["courier"]]
+week <- train.df[["week"]]
+for(i in ids){
+  if(sum(week[which(courier == i)] %in% weeks.of.interest) == 3){
+    train.df[train.df$courier == i,"target"] <- 0
+  }else{
+    train.df[train.df$courier == i,"target"] <- 1
+  }
+}
+
+train.df <- train.df[,-22]
+train.df %<>% 
+  group_by(courier) %>% 
+  filter(!(week %in% c(8,9,10,11))) %>% 
+  mutate(worked_weeks = as.numeric(n())) %>%
+  summarise_all("mean") 
+
+
+```
+
+
+```{r echo=FALSE}
+
+train.df <<- fread("train.csv", sep = ",", header= TRUE)
+inputPanel(
+  selectInput("featur", label = "Select features:",
+              choices = c( 
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17",
+              			"feature_19",
+              			"worked_weeks"), 
+  						selected = c("feature_1", "feature_2","feature_3", "feature_4","worked_weeks"), 
   						multiple = T)
 
 )
@@ -419,16 +611,75 @@ ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha
 )
 ```
 
+Here we can see that the feature that seems to separate best the couriers is `feature_3`, and all the variables highly correlated with it. Also `worked_weeks` seems to separate them quite well, which may give us a hint on what the label means. It seems that the label separates hard workers from light workers, or any other indicator that seems to be related to that.
 
 
 
 ## Task 2: Predictive Algorithm
 
+For constructive the predictive model we choose the random forest. The advantadge of the random forest is that it is fairly easy to tune and does not need a validation test set. Every time a tree is generated a sample is taken, in this case of $70\%$ the training set, and validated with the rest of the dataset. In this way the out of bag error (`OOB`) gives us the same error as if we divided the dataset into the classic train/test. This fits our problem very well as we have low number of instances and we need as much as possible to train the model. The random forest will also tell us which variables are more relevant to the classification, giving us insight of our data that we can make decisions on. 
 
-Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+```{r}
+# Random Forest
+set.seed(666)
+train.df <- fread("train.csv", sep = ",", header= TRUE)
+train.df$target <- as.factor(train.df$target)
+train.df$feature_18 <- as.factor(train.df$feature_18)
+train.df %<>%
+	dplyr::select(-week, -courier)
+
+rf_model <- randomForest(formula = target ~ ., 
+                         data = train.df, 
+                         mtry = 4, 
+                         ntree = 8000, 
+						 sampsize = floor(0.7*nrow(train.df)),
+                         nodesize=15
+                         )
+rf_model
+```
+
 
 
 ## Task 3: Evaluating the Model
 
-Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+Model with all the variables and instances
+
+```{r}
+# Performance
+rf_model
+
+
+# Variable Importance Plot
+varImpPlot(rf_model)
+```
+
+
+It is capable of predicting the `1` with only an error of $3\%$ but due to the small sample size of instances with target `0` the model predicts them with an error of $74\%$. We can explore another model where the data is balanced in terms of the class to predict. Let us equalize the number of instances for each class by taking a sample of the instances of `1`  equal of the instances of `0`.
+
+```{r}
+# Random Forest with reduced data
+zero.df <- train.df %>% 
+  filter(target == 0) 
+
+one.df <- train.df %>% 
+  filter(target == 1) %>% 
+  sample_n(nrow(zero.df))
+
+train.sampled <- rbind(zero.df, one.df)
+rf_model_alt <- randomForest(formula = target ~ ., 
+                         data = train.sampled, 
+                         mtry = 4, 
+                         ntree = 8000,
+					     sampsize = floor(0.7*nrow(train.sampled)),
+                         nodesize=15
+                         )
+```
+
+```{r echo=F}
+varImpPlot(rf_model_alt)
+```
+
+```{r echo=F}
+print(rf_model_alt)
+```
 
