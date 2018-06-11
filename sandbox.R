@@ -19,7 +19,6 @@ lifetime.df <- lifetime.df %>%
 
 table.NA <- table(lifetime.df$is_na, lifetime.df$feature_1)
 
-
 list.NA <- list()
  
 group = c("a", "b", "c", "d")
@@ -232,23 +231,23 @@ for(i in ids){
 train.df %<>% 
   group_by(courier) %>% 
   filter(!(week %in% c(8,9,10,11))) %>% 
-  summarise_all("mean")
+  summarise_all(c("min", "max"))
 
 #Add lifetime feature_1 into weekly
 ids <-  match(train.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 train.df$feature_18 <- b
 
-train.df <- train.df[, -22]
+train.df <- train.df[, -c(22,43,44)]
 write_csv(train.df, "train.csv")
 
 
 
 
 # Random Forest -----------------------------------------------------------
-
+library(randomForest)
 train.df <- fread("train.csv", sep = ",", header= TRUE)
-train.df$target <- as.factor(train.df$target)
+train.df$target_max <- as.factor(train.df$target_max)
 train.df$feature_18 <- as.factor(train.df$feature_18)
 
 set.seed(666)
@@ -265,8 +264,8 @@ train.sampled <- rbind(zero.df, one.df)
 
 
 
-rf_model <- randomForest(formula = target ~ ., 
-                         data = train.sampled, 
+rf_model <- randomForest(formula = target_max ~ ., 
+                         data = train.df, 
                          mtry = 4, 
                          ntree = 8000, 
                          nodesize=15

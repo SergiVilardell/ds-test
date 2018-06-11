@@ -502,21 +502,23 @@ for(i in ids){
   }
 }
 
-
+train.df <- train.df[,-22]
 train.df %<>% 
   group_by(courier) %>% 
   filter(!(week %in% c(8,9,10,11))) %>% 
+  mutate(worked_weeks = as.numeric(n())) %>%
   summarise_all("mean") 
+
 
 ```
 
 
 ```{r echo=FALSE}
 
-train.df <<- train.df 
+train.df <<- fread("train.csv", sep = ",", header= TRUE)
 inputPanel(
   selectInput("featur", label = "Select features:",
-              choices = c("courier", "week", 
+              choices = c( 
               			"feature_1", 
               			"feature_2", 
               			"feature_3",
@@ -534,8 +536,9 @@ inputPanel(
               			"feature_15",
               			"feature_16",
               			"feature_17",
-              			"feature_19"), 
-  						selected = c("feature_1", "feature_2","feature_3", "feature_4"), 
+              			"feature_19",
+              			"worked_weeks"), 
+  						selected = c("feature_1", "feature_2","feature_3", "feature_4","worked_weeks"), 
   						multiple = T)
 
 )
