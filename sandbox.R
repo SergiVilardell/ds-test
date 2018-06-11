@@ -132,6 +132,12 @@ library(MASS)
 emp <- weekly.df$feature_3
 hist(emp)
 
+fit_lognorm <- fitdistr(emp, "lognormal")
+theo <- rlnorm(length(emp), 
+			   meanlog = fit_lognorm$estimate[["meanlog"]], 
+			   sdlog = fit_lognorm$estimate[["sdlog"]])
+qqplot(emp,theo)
+
 
 # Poisson
 fit_poisson <- fitdistr(emp, "poisson")
@@ -240,9 +246,6 @@ write_csv(train.df, "train.csv")
 
 
 # Random Forest -----------------------------------------------------------
-
-
-library(randomForest)
 
 train.df <- fread("train.csv", sep = ",", header= TRUE)
 train.df$target <- as.factor(train.df$target)

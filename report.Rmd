@@ -26,6 +26,7 @@ library(qqplotr)
 library(MASS)
 library(plotly)
 library(rsconnect)
+library(randomForest)
 ```
 
 ## Task 1: Exploratory Analysis
@@ -33,7 +34,7 @@ library(rsconnect)
 Let us describe the data given a little bit:
 
 ```{r}
-#Read data
+# Read data
 lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
 weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 
@@ -53,12 +54,12 @@ glimpse(lifetime.df)
 Here we have a column for the id of each `courier`, a categorical feature in `feature_1` with values `a,b,c,d`, and a numerical feature in `feature_2`. Note that in `feature_2` there are `NA`, therefore we should compute how many instances there are with missing values:
 
 ```{r}
-#Add column to account for the NAs
+# Add column to account for the NAs
 # T == NA, F != NA
 lifetime.df <- lifetime.df %>% 
 	mutate( is_na = ifelse(is.na(feature_2), T, F))
 
-#Check how many NAs we have
+# Check how many NAs we have
 lifetime.df %>%  
 	count(is_na)
 ```
@@ -75,6 +76,7 @@ ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
 Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless the proportion of `NA` values for each group seems to be similar.
 
 ```{r}
+# Counting NAs
 lifetime.df %>% 
 	group_by(feature_1) %>% 
 	summarise(sum(is_na)/n())
@@ -93,6 +95,7 @@ plot(lifetime.df$feature_2, main = "Overview of Lifetime's feature 2")
 All values lie within the same range except some outliers: the three instances with value above 900.
 
 ```{r}
+# Filtering big numbers
 lifetime.df %>% 
 	drop_na() %>% 
 	filter(feature_2 > 200)
@@ -100,6 +103,7 @@ lifetime.df %>%
  And the negative numbers:
  
 ```{r}
+# Filtering negatives numbers
 lifetime.df %>% 
 	drop_na() %>% 
 	filter(feature_2 < 0)
@@ -149,7 +153,7 @@ beh <- lifetime.df %>%
 list.NA[[i]] <- sample(beh$feature_2, table.NA[,group[i]][2], replace = T)
 }
 
-#GUARRO
+# GUARRO
 
 a.df <-  lifetime.df%>% 
   filter(feature_1 == "a") 
@@ -192,15 +196,14 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 ### Weekly Data
 
 ```{r echo=FALSE, fig.width=10}
-
-#Add lifetime feature_1 into weekly 
+# Add lifetime feature_1 into weekly 
 ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 weekly.df$feature_18 <- b
 
 weekly.df <<- weekly.df
 inputPanel(
-  selectInput("features", label = "Number of features:",
+  selectInput("features", label = "Select features:",
               choices = c("courier", "week", 
               			"feature_1", 
               			"feature_2", 
@@ -219,7 +222,7 @@ inputPanel(
               			"feature_15",
               			"feature_16",
               			"feature_17"), 
-  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
+  						selected = c("feature_3", "feature_4", "feature_5", "feature_7"), 
   						multiple = T)
 
 )
@@ -257,7 +260,7 @@ weekly.df %>%
 
 $15\%$ of the couriers only work 1 week, let us analyse what happens with them
 ```{r}
-#Churn
+# Churn
 churn_df <- weekly.df %>%
   group_by(courier) %>%
   mutate(churn = (n() == 1)) %>%
@@ -279,7 +282,7 @@ Plot with churn
 
 churned <<- churned
 inputPanel(
-  selectInput("feature", label = "Number of features:",
+  selectInput("feature", label = "Select features:",
               choices = c("courier", "week", 
               			"feature_1", 
               			"feature_2", 
@@ -298,7 +301,7 @@ inputPanel(
               			"feature_15",
               			"feature_16",
               			"feature_17"), 
-  						selected = c("feature_4", "feature_5","feature_6", "feature_7"), 
+  						selected = c("feature_3","feature_4", "feature_5", "feature_7"), 
   						multiple = T)
 
 )
@@ -341,11 +344,29 @@ This looks like the data is generated from a theoretical distribution. Let us lo
 fit_poisson <- fitdistr(emp, "poisson")
 theo <- rpois(length(emp),
 			  lambda = fit_poisson$estimate[["lambda"]])
+```
+
+```{r echo=FALSE}
 qqplot(emp,theo, 
-	   main = "QQ plot with Poisson distribution", 
+	   main = "QQ plot with Gamma distribution", 
 	   ylab = "Theoretical Quantiles",
 	   xlab = "Empirical Quantiles")
 ```
+
+```{r}
+fit_lognorm <- fitdistr(emp, "lognormal")
+theo <- rlnorm(length(emp), 
+			   meanlog = fit_lognorm$estimate[["meanlog"]], 
+			   sdlog = fit_lognorm$estimate[["sdlog"]])
+```
+
+```{r, echo = F}
+qqplot(emp,theo,   
+	   main = "QQ plot with Lognormal distribution", 
+	   ylab = "Theoretical Quantiles",
+	   xlab = "Empirical Quantiles")
+```
+
 
 The Poission distribution does not seem to match our distribution.
 
@@ -355,11 +376,15 @@ fit_gamma <- fitdistr(emp, "gamma")
 theo <- rgamma(length(emp), 
 			   shape = fit_gamma$estimate[["shape"]], 
 			   rate = fit_gamma$estimate[["rate"]])
+```
+
+```{r echo=FALSE}
 qqplot(emp,theo, 
 	   main = "QQ plot with Gamma distribution", 
 	   ylab = "Theoretical Quantiles",
 	   xlab = "Empirical Quantiles")
 ```
+
 
 The gamma distribution seems to fit better, but let us look into another distribution:
 
@@ -369,15 +394,21 @@ fit_weibull <- fitdistr(emp, "weibull")
 theo <- rweibull(length(emp), 
 				 shape = fit_weibull$estimate[["shape"]], 
 				 scale = fit_weibull$estimate[["scale"]])
+```
+
+```{r echo=FALSE}
 qqplot(emp,theo, 
-	   main = "QQ plot with Weibull distribution", 
+	   main = "QQ plot with Gamma distribution", 
 	   ylab = "Theoretical Quantiles",
 	   xlab = "Empirical Quantiles")
 ```
 
+
+
 The Weibull distribution seems to fit quite well. It looks quite like straight line, but let us make it sure. Let us build a Kolmogorov-Smirnov test. First we perform a Kolmogorov-Smirnov test with all the data from the empirical distribution:
 
 ```{r}
+# Kolmogorov-Smirnov
 e0 <- ks.test(emp,
               "pweibull",
 			  shape = fit_weibull$estimate[["shape"]],
@@ -388,8 +419,8 @@ e0
 
 With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, we cannot reject the hypothesis that our empirical distribution is not a Weibull distribution. Let us perform the test:
 
-```{r eval=FALSE, include=FALSE}
-
+```{r eval=FALSE}
+# Kolmogorov-Smirnov sampling test
 estimates <- c()
 for(i in 1:1e5){
   estimates[i] <- ks.test(sample(emp, size = 1e2, replace = TRUE),
@@ -413,12 +444,14 @@ ggplot(data = estimates.df, aes(x = estimates))+
 We can see that the histogram of the statistic follows a Kolmogorov distribution quite well. Moreover we can compute the p-value of this test by looking at the position of the first estimate for the Kolmogorov distances that we computed $D = 0.02$ in the cumulative distribution function of the estimates: 
 
 ```{r}
+# Evaluation of the test
 z <- ecdf(estimates.df$estimates)
 1-z(e0)
 ```
  With p-value $1$ we cannot reject the hypothesis that our empirical distribution is not a Weibull. So by the tests performed in the qqplot and the Kolmogorov-Smirnov test we can say with great confidence that `feature_3` is generated from a Weibull distribution. Nevertheless the data from `feature_3` is discrete, and the Weibull is a continuous distribution. It looks as if the data is generated by a Weibull and then has been truncated.
  
 ```{r}
+# Truncating a theorietical Weibull distribution
 theo.df <- data.frame(theo = floor(rweibull(length(emp), 
 					  shape = fit_weibull$estimate[["shape"]],
 					  scale = fit_weibull$estimate[["scale"]])
@@ -451,12 +484,10 @@ weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 
 
 ```{r}
-# Train Model -------------------------------------------------------------
+# Labeling the data
 
 colnames(lifetime.df) <- c("courier", "feature_18", "feature_19")
 total.df <- merge(weekly.df, lifetime.df, all = FALSE, by = "courier")
-
-
 ids <- unique(total.df$courier)
 total.df$target <- NA
 train.df <- total.df %>% data.frame()
@@ -484,7 +515,7 @@ train.df %<>%
 
 train.df <<- train.df 
 inputPanel(
-  selectInput("featur", label = "Number of features:",
+  selectInput("featur", label = "Select features:",
               choices = c("courier", "week", 
               			"feature_1", 
               			"feature_2", 
@@ -520,10 +551,62 @@ ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha
 
 ## Task 2: Predictive Algorithm
 
-Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+```{r}
+# Random Forest
+set.seed(666)
+train.df <- fread("train.csv", sep = ",", header= TRUE)
+train.df$target <- as.factor(train.df$target)
+train.df$feature_18 <- as.factor(train.df$feature_18)
+train.df %<>%
+	dplyr::select(-week, -courier)
 
+rf_model <- randomForest(formula = target ~ ., 
+                         data = train.df, 
+                         mtry = 4, 
+                         ntree = 8000, 
+                         nodesize=15
+                         )
+```
+
+
+```{r}
+# Variable Importance Plot
+varImpPlot(rf_model)
+```
 
 ## Task 3: Evaluating the Model
 
-Lorem fistrum benemeritaar mamaar jarl quietooor sexuarl caballo blanco caballo negroorl. Mamaar no puedor está la cosa muy malar la caidita jarl. Me cago en tus muelas está la cosa muy malar está la cosa muy malar sexuarl sexuarl hasta luego Lucas sexuarl se calle ustée caballo blanco caballo negroorl la caidita. La caidita amatomaa por la gloria de mi madre te voy a borrar el cerito te voy a borrar el cerito. A wan hasta luego Lucas va usté muy cargadoo condemor no te digo trigo por no llamarte Rodrigor sexuarl de la pradera fistro tiene musho peligro. Me cago en tus muelas pecador sexuarl apetecan benemeritaar llevame al sircoo diodeno.
+Model with all the variables and instances
+
+```{r}
+print(rf_model)
+```
+
+It is capable of predicting the `1` with only an error of $3\%$ but due to the small sample size of instances with target `0` the model predicts them with an error of $74\%$. We can explore another model where the data is balanced in terms of the class to predict. Let us equalize the number of instances for each class by taking a sample of the instances of `1`  equal of the instances of `0`.
+
+```{r}
+# Random Forest with reduced data
+zero.df <- train.df %>% 
+  filter(target == 0) 
+
+one.df <- train.df %>% 
+  filter(target == 1) %>% 
+  sample_n(nrow(zero.df))
+
+train.sampled <- rbind(zero.df, one.df)
+rf_model_alt <- randomForest(formula = target ~ ., 
+                         data = train.sampled, 
+                         mtry = 4, 
+                         ntree = 8000, 
+                         nodesize=15
+                         )
+```
+
+```{r echo=F}
+varImpPlot(rf_model_alt)
+```
+
+```{r echo=F}
+print(rf_model_alt)
+```
 
