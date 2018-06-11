@@ -225,29 +225,28 @@ for(i in ids){
     train.df[train.df$courier == i,"target"] <- 1
   }
 }
-
+train.df <- train.df[,-22]
 
 
 train.df %<>% 
   group_by(courier) %>% 
   filter(!(week %in% c(8,9,10,11))) %>% 
-  summarise_all(c("min", "max"))
+  mutate(worked_weeks = n()) %>% 
+  summarise_all("mean")
 
 #Add lifetime feature_1 into weekly
 ids <-  match(train.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 train.df$feature_18 <- b
 
-train.df <- train.df[, -c(22,43,44)]
 write_csv(train.df, "train.csv")
-
 
 
 
 # Random Forest -----------------------------------------------------------
 library(randomForest)
 train.df <- fread("train.csv", sep = ",", header= TRUE)
-train.df$target_max <- as.factor(train.df$target_max)
+train.df$target <- as.factor(train.df$target)
 train.df$feature_18 <- as.factor(train.df$feature_18)
 
 set.seed(666)
@@ -261,16 +260,19 @@ zero.df <- train.df %>%
 train.sampled <- rbind(zero.df, one.df)
 
 
+rf_model <- randomForest(formula = target ~ ., 
+						 data = train.df, 
+						 mtry = 4, 
+						 ntree = 8000, 
+						 nodesize=15,
+						 sampsize = floor(0.7*nrow(train.df)),
+						 do.trace = 10
+)
 
-
-
-rf_model <- randomForest(formula = target_max ~ ., 
-                         data = train.df, 
-                         mtry = 4, 
-                         ntree = 8000, 
-                         nodesize=15
-                         )
 print(rf_model)
+
+
+
 
 
 # Show model error
@@ -290,4 +292,5 @@ rf.pred <- predict(rf_model, rf.test[,-1])
 rf.pred <- ifelse(rf.pred> 0.5,1,0)
 confmat <- table(observed = rf.test[, "is_duplicate"], predicted = rf.pred)
 result <- (confmat[1,1]+confmat[2,2]+3441)/(sum(confmat)+3441)
+
 

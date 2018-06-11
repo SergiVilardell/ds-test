@@ -195,6 +195,57 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 
 ### Weekly Data
 
+```{r}
+glimpse(weekly.df)
+```
+
+Here in `weekly_data` there is a record for the worked weeks of some of the couriers. There is the `courier` column with the courier id, the column `week` for the worked week, and the rest are numerical features from 1 to 17. Let us explore those variables by plotting their distributions and the correlations among them
+
+
+```{r echo=FALSE}
+
+weekly.df <<- weekly.df
+inputPanel(
+  selectInput("features", label = "Select features:",
+              choices = c(
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_1", "feature_3", "feature_4", "feature_5", "feature_7"), 
+  						multiple = T)
+
+)
+  
+renderPlot({
+
+ggpairs(weekly.df, 
+		columns = input$features, aes(alpha = 0.2))+
+		theme_minimal()+
+		ggtitle("Correlation and Distribution plots for Weekly data")
+
+},height = 600, width = 800 
+)
+
+```
+
+It is interesting to look in detail at some correlations. The first that stands out the most is the correlation between `feature_4` and `feature_5` as they have a correlation of `-1`. We can easily see that the features follow `feature_4 + feature_5 = 1`, meaning that we can get rid of either one because they have the same information. 
+
+We can also explore the distribution of the data by grouping with `feature_1` of `lifetime_data` to see if we can gather some more information.
+
 ```{r echo=FALSE, fig.width=10}
 # Add lifetime feature_1 into weekly 
 ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
@@ -242,81 +293,7 @@ ggpairs(weekly.df,
 
 ```
 
-
-```{r echo=FALSE}
-weekly.df %>%
-  group_by(courier) %>%
-  summarise(n = n()) %>%
-  ggplot() +
-  geom_bar(aes(x = as.factor(n), y  = ..count../sum(..count..)*100, fill = (..count..))) +
-  theme_minimal() +
-  scale_fill_viridis(option = "D") +
-  theme(legend.position = "NONE") +
-  xlab("Number of Weeks worked") +
-  ylab("(%)")+
-  ggtitle("Barplot of total worked weeks")
-```
-
-
-$15\%$ of the couriers only work 1 week, let us analyse what happens with them
-```{r}
-# Churn
-churn_df <- weekly.df %>%
-  group_by(courier) %>%
-  mutate(churn = (n() == 1)) %>%
-  filter(churn == TRUE)
-
-nochurn_df <-  weekly.df %>%
-  group_by(courier) %>%
-  mutate(churn = (n() == 1)) %>%
-  filter(churn == FALSE)
-
-churn_df <- churn_df %>%
-  sample_n(size = floor(nrow(nochurn_df)/nrow(churn_df)), replace = TRUE)
-
-churned <- rbind(churn_df, nochurn_df)
-```
-
-Plot with churn
-```{r echo=FALSE}
-
-churned <<- churned
-inputPanel(
-  selectInput("feature", label = "Select features:",
-              choices = c("courier", "week", 
-              			"feature_1", 
-              			"feature_2", 
-              			"feature_3",
-              			"feature_4", 
-              			"feature_5",
-              			"feature_6", 
-              			"feature_7", 
-              			"feature_8", 
-              			"feature_9", 
-              			"feature_10", 
-              			"feature_11", 
-              			"feature_12",
-              			"feature_13",
-              			"feature_14",
-              			"feature_15",
-              			"feature_16",
-              			"feature_17"), 
-  						selected = c("feature_3","feature_4", "feature_5", "feature_7"), 
-  						multiple = T)
-
-)
-  
-renderPlot(
-	{ggpairs(churned, 
-			columns = input$feature,  
-			aes(colour = churn, alpha = 0.5))+
-			theme_minimal()+
-			ggtitle("Correlation and distribution plots for Weekly data by churn")},
-
-	height = 600, width = 800 
-)
-
-```
+Our assumption that `feature_2` from `lifetime_data` may be able to distinguish some couriers from the others seems not to hold. Correlations between variables are very similar even among groups. The ony group that stands out is `c`. The correlation when computed with the instances of group `c` are very high among variables, but this could be due to the low sample size of group `c` so it should not be trusted. 
 
 
 ### Feature 3
@@ -475,6 +452,89 @@ ggmatrix(list(theo.plot, emp.plot), nrow = 2, ncol = 1, yAxisLabels= c("Theoreti
 
 They look very similar. This should be enough evidence to claim that `feature_3` is indeed a truncated Weibull distribution.
 
+
+### Churn
+
+Let us explore how many weeks the couriers work and if it has any impact on the data they show.
+
+```{r echo=FALSE}
+weekly.df %>%
+  group_by(courier) %>%
+  summarise(n = n()) %>%
+  ggplot() +
+  geom_bar(aes(x = as.factor(n), y  = ..count../sum(..count..)*100, fill = (..count..))) +
+  theme_minimal() +
+  scale_fill_viridis(option = "D") +
+  theme(legend.position = "NONE") +
+  xlab("Number of Weeks worked") +
+  ylab("(%)")+
+  ggtitle("Barplot of total worked weeks")
+```
+
+
+We can see that approximately $15\%$ of the couriers only work 1 week, let us analyse what happens with them
+```{r}
+# Churn
+churn_df <- weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == TRUE)
+
+nochurn_df <-  weekly.df %>%
+  group_by(courier) %>%
+  mutate(churn = (n() == 1)) %>%
+  filter(churn == FALSE)
+
+churn_df <- churn_df %>%
+  sample_n(size = floor(nrow(nochurn_df)/nrow(churn_df)), replace = TRUE)
+
+churned <- rbind(churn_df, nochurn_df)
+```
+
+We create the variable `churn` to label the couriers with `1` if they only work one week, and `0` otherwise.
+
+```{r echo=FALSE}
+
+churned <<- churned
+inputPanel(
+  selectInput("feature", label = "Select features:",
+              choices = c("courier", "week", 
+              			"feature_1", 
+              			"feature_2", 
+              			"feature_3",
+              			"feature_4", 
+              			"feature_5",
+              			"feature_6", 
+              			"feature_7", 
+              			"feature_8", 
+              			"feature_9", 
+              			"feature_10", 
+              			"feature_11", 
+              			"feature_12",
+              			"feature_13",
+              			"feature_14",
+              			"feature_15",
+              			"feature_16",
+              			"feature_17"), 
+  						selected = c("feature_1","feature_3", "feature_5", "feature_7"), 
+  						multiple = T)
+
+)
+  
+renderPlot(
+	{ggpairs(churned, 
+			columns = input$feature,  
+			aes(colour = churn, alpha = 0.5))+
+			theme_minimal()+
+			ggtitle("Correlation and distribution plots for Weekly data by churn")},
+
+	height = 600, width = 800 
+)
+
+```
+
+We can see how the couriers behave differently whether they churn or not. Now depending on the meaning of the variables one could infer in what makes a courier work more or less than the others.
+
 ### Label Data
 
 ```{r include=FALSE}
@@ -482,7 +542,7 @@ weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 ```
 
 
-
+ Here we label the data according to the guidance given. It is interesting now to generate once more the correlation and distribution plots grouped by the label. In order to give each courier one instance of data as it would be fed into the model, we collapse all instances of each courier with their mean. Also we create an additional variable named `worked_weeks` which may be relevant to classify the couriers.
 ```{r}
 # Labeling the data
 
@@ -551,8 +611,11 @@ ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha
 )
 ```
 
+Here we can see that the feature that seems to separate best the couriers is `feature_3`, and all the variables highly correlated with it. Also `worked_weeks` seems to separate them quite well, which may give us a hint on what the label means. It seems that the label separates hard workers from light workers, or any other indicator that seems to be related to that.
 
 ## Task 2: Predictive Algorithm
+
+For constructive the predictive model we choose the random forest. The advantadge of the random forest is that it is fairly easy to tune and does not need a validation test set. Every time a tree is generated a sample is taken, in this case of $70\%$ the training set, and validated with the rest of the dataset. In this way the out of bag error (`OOB`) gives us the same error as if we divided the dataset into the classic train/test. This fits our problem very well as we have low number of instances and we need as much as possible to train the model. The random forest will also tell us which variables are more relevant to the classification, giving us insight of our data that we can make decisions on. 
 
 ```{r}
 # Random Forest
@@ -567,23 +630,27 @@ rf_model <- randomForest(formula = target ~ .,
                          data = train.df, 
                          mtry = 4, 
                          ntree = 8000, 
+						 sampsize = floor(0.7*nrow(train.df)),
                          nodesize=15
                          )
+rf_model
 ```
 
 
-```{r}
-# Variable Importance Plot
-varImpPlot(rf_model)
-```
 
 ## Task 3: Evaluating the Model
 
 Model with all the variables and instances
 
 ```{r}
-print(rf_model)
+# Performance
+rf_model
+
+
+# Variable Importance Plot
+varImpPlot(rf_model)
 ```
+
 
 It is capable of predicting the `1` with only an error of $3\%$ but due to the small sample size of instances with target `0` the model predicts them with an error of $74\%$. We can explore another model where the data is balanced in terms of the class to predict. Let us equalize the number of instances for each class by taking a sample of the instances of `1`  equal of the instances of `0`.
 
@@ -600,7 +667,8 @@ train.sampled <- rbind(zero.df, one.df)
 rf_model_alt <- randomForest(formula = target ~ ., 
                          data = train.sampled, 
                          mtry = 4, 
-                         ntree = 8000, 
+                         ntree = 8000,
+					     sampsize = floor(0.7*nrow(train.sampled)),
                          nodesize=15
                          )
 ```
