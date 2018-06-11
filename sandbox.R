@@ -11,10 +11,6 @@ library(magrittr)
 lifetime.df <- fread("Courier_lifetime_data.csv", sep = ",", header= TRUE)
 weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 
-#Add lifetime feature_1 into weekly
-ids <-  match(weekly.df[["courier"]], lifetime.df[["courier"]])
-b <- as.vector(lifetime.df[ids,2])
-weekly.df$feature_18 <- b
 
 
 # NAs ---------------------------------------------------------------------
@@ -237,7 +233,7 @@ ids <-  match(train.df[["courier"]], lifetime.df[["courier"]])
 b <- as.vector(lifetime.df[ids,2])
 train.df$feature_18 <- b
 
-train.df <- train.df[, -20]
+train.df <- train.df[, -22]
 write_csv(train.df, "train.csv")
 
 
