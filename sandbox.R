@@ -196,7 +196,7 @@ for(i in 1:1e5){
 z <- ecdf(estimates)
 1-z(e0)
 
-
+write.csv(data.frame(estimates), "estimates.csv")
 rweibull(length(emp), shape = fit_weibull$estimate[["shape"]], scale = fit_weibull$estimate[["scale"]]) %>%
   trunc() %>%
   table() %>%
