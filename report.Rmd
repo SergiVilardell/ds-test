@@ -30,7 +30,7 @@ library(randomForest)
 
 ## Task 1: Exploratory Analysis
 
-Let us describe the data given a little bit and take a peek at it values and ranges:
+Let us describe the data given a little bit and take a peek at its values and ranges:
 
 ```{r}
 # Read data
@@ -50,7 +50,7 @@ glimpse(lifetime.df)
 ```
 
 
-Here we have a column for the id of each `courier`, a categorical feature in `feature_1` with values `a,b,c,d`, and a numerical feature in `feature_2`. Note that in `feature_2` there are `NA`, therefore we should compute how many instances there are with missing values:
+Here we have a column for the id of each `courier`, a categorical feature in `feature_1` with values `a,b,c,d`, and a numerical feature in `feature_2`. Note that in `feature_2` there are `NA`, therefore we should compute how many instances with missing values there are:
 
 ```{r}
 # Add column to account for the NAs
@@ -63,7 +63,7 @@ lifetime.df %>%
 	count(is_na)
 ```
 
-So about $12\%$ of the instances in `feature_2` are `NA` so they should not be ignored. It is interesting to see the number of instances for each group in `feature_1` and also the distribution of `NA` in said groups.
+About $12\%$ of the instances in `feature_2` are `NA` so they should not be ignored. It is interesting to see the number of instances for each group in `feature_1` and also the distribution of `NA` in aforementioned groups.
 
 ```{r echo=FALSE}
 ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
@@ -72,7 +72,7 @@ ggplot(data = lifetime.df, aes( x = feature_1, fill = is_na))+
 	theme_minimal()
 ```
 
-Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless the proportion of `NA` values for each group seems to be similar.
+Here we can see that the distribution of instances is not even among the groups in `feature_1`. Nevertheless, the proportion of `NA` values for each group seems to be similar.
 
 ```{r}
 # Counting NAs
@@ -81,11 +81,11 @@ lifetime.df %>%
 	summarise(sum(is_na)/n())
 ```
 
-Except in `c` all other groups have similar `NA` proportion, which maybe due to the low number of instances in `c`. 
+Except ifrom `c` all other groups have similar `NA` proportion, which maybe due to the low number of instances in `c`. 
 
 
 
-Quick plot to viasualize `feature_2`:
+Here we show a quick plot to viasualize `feature_2`:
 
 ```{r echo=FALSE}
 plot(lifetime.df$feature_2, main = "Overview of Lifetime's feature 2")
@@ -108,7 +108,7 @@ lifetime.df %>%
 	filter(feature_2 < 0)
 ```
  
- They are outliers not because their value differ from the mean, but because they are the only negative numbers and so they should be treated with caution depending on what `feature_2` means. Without knowing what this data is representing we can only stand out its deviation from the regular behaviour. Furthermore both outliers belong to either group `a` or `b`. 
+ They are outliers not because their value differ from the mean, but because they are the only negative numbers and so they should be treated with caution depending on what `feature_2` means. Without knowing what this data is representing we can only stand out its deviation from the regular behaviour. Furthermore, both outliers belong to either group `a` or `b`. 
  
 Let us see the distribution of `feature_2` without the outliers:
 ```{r echo=FALSE}
@@ -123,7 +123,7 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 ```
 
 
-Also separated by group:
+Also, separated by group:
 ```{r echo=FALSE}
 ggplot(data = filtered.data, aes(x = feature_2))+
 	geom_histogram(binwidth = 1)+
@@ -132,7 +132,7 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 	ggtitle("Histrograms of feature_2 by feature_1")
 ```
 
-In order to fill the `NA` instances we will use bootstrap separately for each group in `feature_1`. In this way each instance is represented in the same way as the others from each group. This is a reasonable solution to fill `NA` values without knowing the meaning of the variable, as it ill preserve the distribution of the values in `feature_2`.
+In order to fill the `NA` instances we will use bootstrap separately for each group in `feature_1`. In this way each instance is represented in the same way as the others from each group. This is a reasonable solution to fill `NA` values without knowing the meaning of the variable, since it still preserves the distribution of the values in `feature_2`.
 
 ```{r include=FALSE}
 lifetime.df <- lifetime.df %>% 
@@ -198,7 +198,7 @@ ggplot(data = filtered.data, aes(x = feature_2))+
 glimpse(weekly.df)
 ```
 
-Here in `weekly_data` there is a record for the worked weeks of some of the couriers. There is the `courier` column with the courier id, the column `week` for the worked week, and the rest are numerical features from 1 to 17. Let us explore those variables by plotting their distributions and the correlations among them
+Here, in `weekly_data` there is a record for the worked weeks of some of the couriers. There is the `courier` column with the courier id, the column `week` for the worked week, and the rest are numerical features from 1 to 17. Let us explore those variables by plotting their distributions and the correlations among them
 
 
 ```{r echo=FALSE}
@@ -224,11 +224,11 @@ ggpairs(weekly.df,
 
 ```
 
-It is interesting to look in detail at some correlations. The first that stands out the most is the correlation between `feature_4` and `feature_5` as they have a correlation of `-1`. We can easily see that the features follow `feature_4 + feature_5 = 1`, meaning that we can get rid of either one because they have the same information. 
+It is interesting to look in detail at some correlations. The first that stands out the most is the correlation between `feature_4` and `feature_5` as they have a correlation of $-1$. We can easily see that the features follow `feature_4 + feature_5 = 1`, meaning that we can get rid of either one because they contain redudant information. 
 
-Another interesting one is `feature_3` which seems drawn from a theoretical distribution, we will explore deeper there later on. This `feature_3` is highly correlated to `feature_2` and `feature_11`.`feature_14` seems to be correlated to `feature_1`, and outside these examples the other features do not have a relevant correlation among them. `feature_8` presents a behaviour that also seems drawn from the combination of theoretical probability distributions.
+Another interesting one is `feature_3` which seems drawn from a theoretical distribution, we will explore deeper there later on. This `feature_3` is highly correlated to `feature_2` and `feature_11`.`feature_14` seems to be correlated to `feature_1`, and aside from these examples the other features do not have a relevant correlation to one another. `feature_8` presents a behaviour that also seems drawn from the combination of theoretical probability distributions.
 
-We can also explore the distribution of the data by grouping with `feature_1` of `lifetime_data` to see if we can gather some more information.
+We can also explore the distribution of the data by grouping `weekly_data` with `feature_1` of `lifetime_data` to see if we can gather some more information.
 
 ```{r echo=FALSE, fig.width=10}
 # Add lifetime feature_1 into weekly 
@@ -247,9 +247,9 @@ inputPanel(
   
 renderPlot({
 
-ggpairs(weekly.df.grouped, 
+ggpairs(weekly.df, 
 		columns = input$feat,  
-		aes(colour = weekly.df.grouped$feature_18, 
+		aes(colour = weekly.df$feature_18, 
 			alpha = 0.5))+
 		theme_minimal()+
 		ggtitle("Correlation and Distribution plots for Weekly data by feature_18")
@@ -292,7 +292,7 @@ theo <- rpois(length(emp),
 
 ```{r echo=FALSE}
 qqplot(emp,theo, 
-	   main = "QQ plot with Gamma distribution", 
+	   main = "QQ plot with Possion distribution", 
 	   ylab = "Theoretical Quantiles",
 	   xlab = "Empirical Quantiles")
 ```
@@ -315,7 +315,7 @@ qqplot(emp,theo,
 ```
 
 
-The gamma distribution seems to fit better, but let us look into another distribution:
+The Gamma distribution seems to fit better, but let us look into another distribution:
 
 ```{r}
 # Weibull
@@ -346,7 +346,7 @@ e0 <- ks.test(emp,
 e0
 ```
 
-With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, then the hypothesis that our distribution is a Weibull is passed. Let us perform the test:
+With Kolmogorov distance $D = 0.02$ this is a good indicator of similarity. But in order to not reject the hypothesis that our empirical distribution is a Weibull distribution, we need to perform the same test multiple times with different samples of our data. Each time we perform the test the statistic, in this case the Kolmogorov distance, is stored. When all tests are done we plot the histogram of the statistic. If the histogram follows a Kolmogorov distribution, then the hypothesis that our distribution is a Weibull is passed. Let us perform the test:
 
 ```{r eval=FALSE}
 # Kolmogorov-Smirnov sampling test
@@ -377,10 +377,10 @@ We can see that the histogram of the statistic follows a Kolmogorov distribution
 z <- ecdf(estimates.df$estimates)
 1-z(e0)
 ```
- With p-value $1$ we cannot reject the hypothesis that our empirical distribution is not a Weibull. So by the tests performed in the qqplot and the Kolmogorov-Smirnov test we can say with great confidence that `feature_3` is generated from a Weibull distribution. Nevertheless the data from `feature_3` is discrete, and the Weibull is a continuous distribution. It looks as if the data is generated by a Weibull and then has been truncated.
+ With p-value $1$ we can say that the hypothesis that our empirical distribution is a Weibull passes. So by the tests performed in the qqplot and the Kolmogorov-Smirnov test we can say with great confidence that `feature_3` is generated from a Weibull distribution. Nevertheless, the data from `feature_3` is discrete, and the Weibull is a continuous distribution. It looks as if the data is generated by a Weibull and then it has been truncated.
  
 ```{r}
-# Truncating a theorietical Weibull distribution
+# Truncating a theoretical Weibull distribution
 theo.df <- data.frame(theo = floor(rweibull(length(emp), 
 					  shape = fit_weibull$estimate[["shape"]],
 					  scale = fit_weibull$estimate[["scale"]])
@@ -468,7 +468,7 @@ renderPlot(
 
 ```
 
-We can see how the couriers behave differently whether they churn or not in `feature_3` and the other features correlated to it. Now depending on the meaning of the variables one could infer in what makes a courier work more or less than the others. In the other features we do not see much difference between the couriers, so it may be that the couriers behave similarly overall except for the features mentioned before, which could give us a hint on why do they only have worked one week.
+We can see how the couriers behave differently, whether they churn or not in `feature_3` and the other features correlated to it. Now depending on the meaning of the variables one could infer what makes a courier work more or less than the others. In the other features we do not see much difference between the couriers, so it may be that the couriers behave similarly overall except from the features mentioned before, which could give us a hint on why they only have worked one week.
 
 ### Label Data
 
@@ -477,7 +477,7 @@ weekly.df <- fread("Courier_weekly_data.csv", sep = ",", header= TRUE)
 ```
 
 
- Here we label the data according to the guidance given. It is interesting now to generate once more the correlation and distribution plots grouped by the label. In order to give each courier one instance of data as it would be fed into the model, we collapse all instances of each courier with their mean. Also we create an additional variable named `worked_weeks` which may be relevant to classify the couriers.
+Here, we label the data according to the guidance given. It is interesting now to generate once more the correlation and distribution plots grouped by label. In order to give each courier one instance of data as it would be fed into the model, we collapse all instances of each courier with their mean. Also we create an additional variable named `worked_weeks` which may be relevant to classify the couriers.
 ```{r}
 # Labeling the data
 
@@ -527,13 +527,13 @@ ggpairs(train.df, columns = input$featur,  aes(colour = as.factor(target), alpha
 )
 ```
 
-Here we can see that the feature that seems to separate best the couriers is `feature_3`, and all the variables highly correlated with it. Also `worked_weeks` seems to separate them quite well, which may give us a hint on what the label means. It seems that the label separates hard workers from light workers, or any other indicator that seems to be related to that.
+Here, we can see that the feature that seems to separate best the couriers is `feature_3`, and all the variables highly correlated with it. Also, `worked_weeks` seems to separate them quite well, which may give us a hint on what the label means. It seems that the label separates hard workers from light workers, or any other indicator that seems to be related to that.
 
 
 
 ## Task 2: Predictive Algorithm
 
-For constructive the predictive model we choose the random forest. The advantadge of the random forest is that it is fairly easy to tune and does not need a validation test set. Every time a tree is generated a sample is taken, in this case of $70\%$ the training set, and validated with the rest of the dataset. In this way the out of bag error (`OOB`) gives us the same error as if we divided the dataset into the classic train/test. This fits our problem very well as we have low number of instances and we need as much as possible to train the model. The random forest will also tell us which variables are more relevant to the classification, giving us insight of our data that we can make decisions on. 
+For constructing the predictive model we choose the random forest. The advantadge of random forests is that it is fairly easy to tune and does not need a validation test set. Every time a tree is generated a sample is taken, in this case $70\%$ of the training set, and validated with the rest of the dataset. In this way, the out of bag error (`OOB`) gives us the same error as if we divided the dataset into the classic train/test. This fits our problem very well as we have low number of instances and we need as much as possible to train the model. The random forest will also tell us which variables are more relevant to classification, giving us insight of our data from which we can make decisions on. 
 
 ```{r}
 # Random Forest
@@ -553,22 +553,21 @@ rf_model <- randomForest(formula = target ~ .,
                          )
 ```
 
+We have chosen to tune the parameters manually, given that we have a low number of instances for one of the classes. If we were to use a fine hyperparameter tuning on our model there is a high chance of committing overfitting even when tuning for cross validation.
 
 
 ## Task 3: Evaluating the Model
 
-Model with all the variables and instances
-
-
+In this section we present the model with all the variables and instances:
 
 ```{r}
 # Variable Importance Plot
 varImpPlot(rf_model)
 ```
 
-The most relevant feature for the model is `feature_3`. Next we have `feature_11` and `feature_2` which is no surprise given that they are highly correlated to `feature_3`. Then we have `worked_weeks`. We want to dissert for a bit here to talk about why we did not fill the missing weeks for the couriers. It seems that the courier missing weeks of work is a relevant feature for distringuishing the label and it has something to do with the behaviour of the courier. As we can see in the plot of correlations between features, `worked_weeks` is correlated with relevant features like `feature_3`. We could have filled the missing week instances for couriers using bootsrap for instance to preserve the distribution of the features. But it does not seem apropriate given that the couriers express different behaviours depending of how many weeks they worked, as we see in the `worked_weeks` feature and also in the churn plots. So in the end we would be doing either two things: filling the `NA` with statistically representative data without still being able to distinguish them because we do not take into account the different behaviour that the couriers exhibit, or we could take this into account and introduce bias in our model, as we can only represent their behaviour with the data we are provided, which is not necessarely the real one.
+The most relevant feature for the model is `feature_3`. Next, we have `feature_11` and `feature_2` which is no surprise given that they are highly correlated to `feature_3`. Then we have `worked_weeks`. We want to dissert for a bit here to talk about why we did not fill the missing weeks for the couriers. It seems that couriers missing weeks of work is a relevant feature for distinguishing the label and it has something to do with the behaviour of the couriers. As we can see in the plot of correlations between features, `worked_weeks` is correlated with relevant features like `feature_3`. We could have filled the missing week instances for couriers using bootstrap for instance, to preserve the distribution of the features. But it does not seem appropriate given that couriers express different behaviours depending of how many weeks they have worked, as we can see in `worked_weeks` feature and also in churn plots. Therefore, in the end we would be doing either two things: filling the `NA` with statistically representative data without still being able to distinguish them because we do not take into account the different behaviour that couriers exhibit, or we could take the behaviour into account and introduce bias in our model, as we can only represent their behaviour with the data we are provided, which is not necessarely representative of the real one.
 
-Here now we show the performance of the model:
+Here, we show the performance of the model:
 
 ```{r, echo = F}
 # Performance
@@ -576,7 +575,9 @@ rf_model
 ```
 
 
-It is capable of predicting the `1` with only an error of $3\%$ but due to the small sample size of instances with target `0` the model predicts them with an error of $74\%$. We can explore another model where the data is balanced in terms of the class to predict. Let us equalize the number of instances for each class by taking a sample of the instances of `1`  equal of the instances of `0`.
+The model is capable of predicting the `1` with  an error of only $3\%$. Nevertheless, due to the small sample size of instances with target `0` the model predicts them with an error of $74\%$. There was an attempt to create new variables for the model, instead of collapsing the weekly data of the courier into their mean we took the minimum and maximum value of their worked weeks. It turned out that the model did not improve as the variance explained by those new features is the same as the first ones. 
+
+We can explore another model where the data is balanced in terms of the class to predict. Let us equalize the number of instances for each class by taking a sample of the instances of `1`  equal to the number of instances of `0`.
 
 ```{r}
 # Random Forest with reduced data
@@ -605,4 +606,4 @@ varImpPlot(rf_model_alt)
 print(rf_model_alt)
 ```
 
-With this model we have a higher `OOB` error of about $25\%$ so it seems that overall the model is worse. But if we look closely at the classification errors we can see that the classification error for the `0` has reduced from $74\%$ to $22\%$, while the error for `1` has increased from $3\%$ to $30\%$. This does not mean that the model is necessarely worse, it depends on what the porpuse of the model is. For instance imagine that we want to classify patients from a hospital in the categories `ill` and `not ill`. For a doctor it is crucial to know with high accuracy if the patient is ill and will not tolerate high error in this classification, but will not mind if a healthy patient is classified as `ill`. In this case the first model is useful if the `1` are ill patients, as it has low classification error. Another situation could be that we need to predict the credit default for clients in a bank. It would happen that we have low data for the ones defaulting the credit, as in the case of our `0`. A model that does not classify them well is of no interest to the bank, even if we are able to classify very well the non default clients. For the bank it is more useful a model like the second one, where the overall classification error is higher, but the label of interest has lower misclasification. In our case, we do not know which is the intention of this classification as we do not know exactly what the label means, or the variables involved. We present both models that could be suited for both cases.
+With this model we have a higher `OOB` error of about $25\%$ so it seems that overall the model is worse. But, if we look closely at the classification errors we can see that the classification error for `0` has reduced from $74\%$ to $22\%$, while the error for `1` has increased from $3\%$ to $30\%$. This does not mean that the model is necessarely worse, it depends on the purpose of the model. For instance, imagine that we want to classify patients from a hospital in the categories `ill` and `not ill`. For a doctor it is crucial to know with high accuracy if a patient is ill and will not tolerate high error in this classification, but will not mind if a healthy patient is classified as `ill`. In this case the first model is useful if label `1` represents ill patients, as it has low classification error. Another situation could be that we need to predict credit default for clients in a bank. It would happen that we have low data for the ones defaulting the credit, as is the case of our `0`. A model that does not classify them well is of no interest to the bank, even if we are able to classify very well non default clients. For the bank it is more useful a model like the second one, where the overall classification error is higher, but the label of interest has lower misclasification. In our case, we do not know which is the intention of this classification as we do not know exactly what each label means, or the variables involved. We present both models that could be suited for both cases.
